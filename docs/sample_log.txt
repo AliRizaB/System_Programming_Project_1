@@ -1,0 +1,18 @@
+[2026-11-26 23:17:59] [STARTUP] Watchdog supervisor started.
+[2026-11-26 23:18:00] [STATUS] Status report (SIGUSR1) - watchdog PID: 173, children: 2, running: 2
+[2026-11-26 23:18:00] [STATUS] Child 0 -> PID: 175, state: RUNNING, restarts: 0
+[2026-11-26 23:18:00] [STATUS] Child 1 -> PID: 176, state: RUNNING, restarts: 0
+[2026-11-26 23:18:02] [EXIT] Worker 176 exited with code 0
+[2026-11-26 23:18:04] [EXIT] Worker 175 terminated by signal 9
+[2026-11-26 23:18:04] [RESTART] Restarting worker service (attempt 1 of 3)
+[2026-11-26 23:18:06] [EXIT] Worker 213 terminated by signal 9
+[2026-11-26 23:18:06] [RESTART] Restarting worker service (attempt 2 of 3)
+[2026-11-26 23:18:08] [EXIT] Worker 227 terminated by signal 9
+[2026-11-26 23:18:08] [RESTART] Restarting worker service (attempt 3 of 3)
+[2026-11-26 23:18:10] [EXIT] Worker 235 terminated by signal 9
+[2026-11-26 23:18:10] [RESTART] Restart limit reached for worker service
+[2026-11-26 23:18:12] [STATUS] Status report (SIGUSR1) - watchdog PID: 173, children: 2, running: 0
+[2026-11-26 23:18:12] [STATUS] Child 0 -> PID: -, state: NOT RUNNING, restarts: 3
+[2026-11-26 23:18:12] [STATUS] Child 1 -> PID: -, state: NOT RUNNING, restarts: 0
+[2026-11-26 23:18:13] [SHUTDOWN] SIGTERM
+[2026-11-26 23:18:13] [SHUTDOWN] All child process terminated successfully. Watchdog exiting gracefully.

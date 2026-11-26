@@ -1,0 +1,72 @@
+Watchdog test scenarios - 2026-11-26 23:17:59
+
+== 1. Build ==
+  [PASS] make finished without error
+  [PASS] watchdog executable created
+  [PASS] worker executable created
+  [PASS] no compiler warnings
+
+== 2. Normal operation ==
+  watchdog PID: 173, service PID: 175, task PID: 176
+  [PASS] watchdog is running
+  [PASS] at least 2 child processes started
+  [PASS] service worker is a child of watchdog
+  [PASS] task worker is a child of watchdog
+  [PASS] STARTUP written to log
+
+== 3. Status report (SIGUSR1) ==
+    [2026-11-26 23:18:00] [STATUS] Status report (SIGUSR1) - watchdog PID: 173, children: 2, running: 2
+    [2026-11-26 23:18:00] [STATUS] Child 0 -> PID: 175, state: RUNNING, restarts: 0
+    [2026-11-26 23:18:00] [STATUS] Child 1 -> PID: 176, state: RUNNING, restarts: 0
+  [PASS] status report written to log
+  [PASS] service PID 175 is in the report as RUNNING
+  [PASS] task PID 176 is in the report as RUNNING
+
+== 4. Normal termination (task exits with code 0) ==
+  [PASS] task process finished
+  [PASS] exit code 0 detected
+  [PASS] task was NOT restarted
+
+== 5. Unexpected termination (kill -9 to service) ==
+  [PASS] PID 175 verified before sending the signal
+  old PID: 175, new PID: 213
+  [PASS] termination by signal detected
+  [PASS] service restarted with a new PID
+  [PASS] restart attempt 1 of 3
+
+== 6. Restart limit (max 3) ==
+  kill 2 -> PID 213
+  kill 3 -> PID 227
+  kill 4 -> PID 235
+  [PASS] limit reached message
+  [PASS] exactly 3 restarts done
+  [PASS] no more service process running
+  [PASS] watchdog still running
+  [PASS] report shows service as NOT RUNNING with 3 restarts
+
+== 7. Graceful shutdown (SIGTERM) ==
+  watchdog PID: 262, children: 264 265 
+  [PASS] watchdog exited
+  [PASS] SHUTDOWN with SIGTERM in log
+  [PASS] all children terminated and reaped (no zombie)
+  [PASS] no restart during shutdown
+
+== 8. Ctrl+C (SIGINT) ==
+  watchdog PID: 280, children: 282 283 
+  [PASS] watchdog exited
+  [PASS] SHUTDOWN with SIGINT in log
+  [PASS] all children terminated and reaped
+  [PASS] no restart after Ctrl+C
+
+== 9. Log verification (run 1) ==
+  [PASS] every line has [date time] [EVENT] format
+  [PASS] startup event in log
+  [PASS] status report in log
+  [PASS] shutdown event in log
+  [PASS] child exit event in log
+  [PASS] restart event in log
+  [PASS] restart limit event in log
+
+== Result ==
+  passed: 39, failed: 0
+  logs saved in tests/logs/

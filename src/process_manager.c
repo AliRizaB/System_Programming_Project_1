@@ -9,6 +9,7 @@
 #include <signal.h>
 #include <sys/time.h>
 #include <time.h>
+#include "logger.h"
 
 #define WORKER_COUNT 2
 #define MAX_RESTARTS 3
@@ -140,13 +141,14 @@ void handle_terminated_children(void)
 
             children[i].is_running = 0;
             children[i].pid = 0;
+            char msg[256];
 
             if (WIFEXITED(status)) {
-                printf("Worker %ld exited with code %d\n",
-                       (long)pid, WEXITSTATUS(status));
+                snprintf(msg, sizeof msg, "Worker %ld exited with code %d",(long)pid, WEXITSTATUS(status));
+                log_event("EXIT", msg);
             } else if (WIFSIGNALED(status)) {
-                printf("Worker %ld terminated by signal %d\n",
-                       (long)pid, WTERMSIG(status));
+                snprintf(msg, sizeof msg, "Worker %ld terminated by signal %d",(long)pid, WTERMSIG(status));
+                log_event("EXIT", msg);
             }
             int completed = WIFEXITED(status) && WEXITSTATUS(status) == 0;
 
@@ -154,14 +156,16 @@ if (!completed && !g_shutdown_requested) {
     if (children[i].restart_count < MAX_RESTARTS) {
         children[i].restart_count++;
 
-        printf("Restarting worker %s (attempt %d of %d)\n",
-               modes[i], children[i].restart_count, MAX_RESTARTS);
+                snprintf(msg, sizeof msg, "Restarting worker %s (attempt %d of %d)",
+                 modes[i], children[i].restart_count, MAX_RESTARTS);
+        log_event("RESTART", msg);
 
         if (start_child(&children[i], modes[i]) != 0) {
             fprintf(stderr, "Failed to restart worker %s\n", modes[i]);
         }
     } else {
-        printf("Restart limit reached for worker %s\n", modes[i]);
+                snprintf(msg, sizeof msg, "Restart limit reached for worker %s", modes[i]);
+        log_event("RESTART", msg);
     }
 }
             break;

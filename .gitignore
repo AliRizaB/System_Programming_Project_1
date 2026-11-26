@@ -1,0 +1,5 @@
+watchdog
+worker
+watchdog.log
+tests/logs/
+tests/test_results.txt

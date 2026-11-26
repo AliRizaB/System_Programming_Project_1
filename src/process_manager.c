@@ -140,16 +140,14 @@ void handle_terminated_children(void)
             }
 
             children[i].is_running = 0;
-                        children[i].pid = 0;
+            children[i].pid = 0;
             char msg[256];
 
             if (WIFEXITED(status)) {
-                snprintf(msg, sizeof msg, "Worker %ld exited with code %d",
-                         (long)pid, WEXITSTATUS(status));
+                snprintf(msg, sizeof msg, "Worker %ld exited with code %d",(long)pid, WEXITSTATUS(status));
                 log_event("EXIT", msg);
             } else if (WIFSIGNALED(status)) {
-                snprintf(msg, sizeof msg, "Worker %ld terminated by signal %d",
-                         (long)pid, WTERMSIG(status));
+                snprintf(msg, sizeof msg, "Worker %ld terminated by signal %d",(long)pid, WTERMSIG(status));
                 log_event("EXIT", msg);
             }
             int completed = WIFEXITED(status) && WEXITSTATUS(status) == 0;

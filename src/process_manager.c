@@ -34,13 +34,15 @@ static int init_child_monitoring(void)
     sigemptyset(&action.sa_mask);
     action.sa_flags = SA_NOCLDSTOP;
 
-    if (sigaction(SIGCHLD, &action, NULL) == -1) {
+    if (sigaction(SIGCHLD, &action, NULL) == -1)
+    {
         perror("sigaction SIGCHLD");
         return -1;
     }
 
     action.sa_flags = 0;
-    if (sigaction(SIGALRM, &action, NULL) == -1) {
+    if (sigaction(SIGALRM, &action, NULL) == -1)
+    {
         perror("sigaction SIGALRM");
         return -1;
     }
@@ -49,7 +51,8 @@ static int init_child_monitoring(void)
     timer.it_value.tv_sec = 1;
     timer.it_interval.tv_sec = 1;
 
-    if (setitimer(ITIMER_REAL, &timer, NULL) == -1) {
+    if (setitimer(ITIMER_REAL, &timer, NULL) == -1)
+    {
         perror("setitimer");
         return -1;
     }
@@ -61,12 +64,14 @@ static int start_child(ChildProcess *child, const char *mode)
 {
     pid_t pid = fork();
 
-    if (pid < 0) {
+    if (pid < 0)
+    {
         perror("fork");
         return -1;
     }
 
-    if (pid == 0) {
+    if (pid == 0)
+    {
         execl("./worker", "worker", mode, (char *)NULL);
         perror("execl ./worker");
         _exit(127);
@@ -74,32 +79,46 @@ static int start_child(ChildProcess *child, const char *mode)
 
     child->pid = pid;
     child->is_running = 1;
-    
+
+    // Log child event;
+    char buf[128];
+    snprintf(buf, sizeof(buf), "Child [%s] is created (PID: %ld)", mode, (long)pid);
+    log_event("CHILD CREATED", buf);
+
     // Show that the child is restarted
-    if (child->restart_count == 0) {
+    if (child->restart_count == 0)
+    {
         printf("[%s] started (PID: %ld)\n", mode, (long)pid);
-    } else {
+    }
+    else
+    {
         printf("[%s] re-started (PID: %ld, attempt %d/%d)\n",
                mode, (long)pid, child->restart_count, MAX_RESTARTS);
+        snprintf(buf, sizeof(buf), "Child [%s] re-started (PID: %ld, attempt %d/%d)\n",
+                 mode, (long)pid, child->restart_count, MAX_RESTARTS);
+        log_event("CHILD TERMINATE REQUEST", buf);
     }
-    return 0;
     return 0;
 }
 
 int init_and_start_children(int count)
 {
-    if (count != WORKER_COUNT || child_count != 0) {
+    if (count != WORKER_COUNT || child_count != 0)
+    {
         return -1;
     }
 
-    if (init_child_monitoring() != 0) {
-    return -1;
-}
+    if (init_child_monitoring() != 0)
+    {
+        return -1;
+    }
 
     const char *modes[WORKER_COUNT] = {"service", "task"};
 
-    for (int i = 0; i < count; i++) {
-        if (start_child(&children[i], modes[i]) != 0) {
+    for (int i = 0; i < count; i++)
+    {
+        if (start_child(&children[i], modes[i]) != 0)
+        {
             shutdown_all_children(5);
             return -1;
         }
@@ -112,7 +131,8 @@ int init_and_start_children(int count)
 
 const ChildProcess *get_child_processes(int *count)
 {
-    if (count != NULL) {
+    if (count != NULL)
+    {
         *count = child_count;
     }
 
@@ -121,30 +141,39 @@ const ChildProcess *get_child_processes(int *count)
 
 void handle_terminated_children(void)
 {
-    if (!child_check_requested) {
-    return;}
+    if (!child_check_requested)
+    {
+        return;
+    }
 
     child_check_requested = 0;
-    for (;;) {
+    for (;;)
+    {
         int status;
         pid_t pid = waitpid(-1, &status, WNOHANG);
 
-        if (pid == 0) {
+        if (pid == 0)
+        {
             return;
         }
 
-        if (pid < 0) {
-            if (errno == EINTR) {
+        if (pid < 0)
+        {
+            if (errno == EINTR)
+            {
                 continue;
             }
-            if (errno != ECHILD) {
+            if (errno != ECHILD)
+            {
                 perror("waitpid");
             }
             return;
         }
 
-        for (int i = 0; i < child_count; i++) {
-            if (children[i].pid != pid) {
+        for (int i = 0; i < child_count; i++)
+        {
+            if (children[i].pid != pid)
+            {
                 continue;
             }
 
@@ -152,31 +181,39 @@ void handle_terminated_children(void)
             children[i].pid = 0;
             char msg[256];
 
-            if (WIFEXITED(status)) {
-                snprintf(msg, sizeof msg, "Worker %ld exited with code %d",(long)pid, WEXITSTATUS(status));
+            if (WIFEXITED(status))
+            {
+                snprintf(msg, sizeof msg, "Worker %ld exited with code %d", (long)pid, WEXITSTATUS(status));
                 log_event("EXIT", msg);
-            } else if (WIFSIGNALED(status)) {
-                snprintf(msg, sizeof msg, "Worker %ld terminated by signal %d",(long)pid, WTERMSIG(status));
+            }
+            else if (WIFSIGNALED(status))
+            {
+                snprintf(msg, sizeof msg, "Worker %ld terminated by signal %d", (long)pid, WTERMSIG(status));
                 log_event("EXIT", msg);
             }
             int completed = WIFEXITED(status) && WEXITSTATUS(status) == 0;
 
-if (!completed && !g_shutdown_requested) {
-    if (children[i].restart_count < MAX_RESTARTS) {
-        children[i].restart_count++;
+            if (!completed && !g_shutdown_requested)
+            {
+                if (children[i].restart_count < MAX_RESTARTS)
+                {
+                    children[i].restart_count++;
 
-                snprintf(msg, sizeof msg, "Restarting worker %s (attempt %d of %d)",
-                 modes[i], children[i].restart_count, MAX_RESTARTS);
-        log_event("RESTART", msg);
+                    snprintf(msg, sizeof msg, "Restarting worker %s (attempt %d of %d)",
+                             modes[i], children[i].restart_count, MAX_RESTARTS);
+                    log_event("RESTART", msg);
 
-        if (start_child(&children[i], modes[i]) != 0) {
-            fprintf(stderr, "Failed to restart worker %s\n", modes[i]);
-        }
-    } else {
-                snprintf(msg, sizeof msg, "Restart limit reached for worker %s", modes[i]);
-        log_event("RESTART", msg);
-    }
-}
+                    if (start_child(&children[i], modes[i]) != 0)
+                    {
+                        fprintf(stderr, "Failed to restart worker %s\n", modes[i]);
+                    }
+                }
+                else
+                {
+                    snprintf(msg, sizeof msg, "Restart limit reached for worker %s", modes[i]);
+                    log_event("RESTART", msg);
+                }
+            }
             break;
         }
     }
@@ -186,15 +223,18 @@ static int reap_on_shutdown(ChildProcess *child, int options)
 {
     pid_t result;
 
-    do {
+    do
+    {
         result = waitpid(child->pid, NULL, options);
     } while (result == -1 && errno == EINTR);
 
-    if (result == 0) {
+    if (result == 0)
+    {
         return 0;
     }
 
-    if (result == -1 && errno != ECHILD) {
+    if (result == -1 && errno != ECHILD)
+    {
         perror("waitpid during shutdown");
         return -1;
     }
@@ -204,17 +244,20 @@ static int reap_on_shutdown(ChildProcess *child, int options)
     return 1;
 }
 
-
 void shutdown_all_children(int timeout_seconds)
 {
     struct itimerval stopped_timer = {0};
-    if (setitimer(ITIMER_REAL, &stopped_timer, NULL) == -1) {
+    if (setitimer(ITIMER_REAL, &stopped_timer, NULL) == -1)
+    {
         perror("stop timer");
     }
 
-    for (int i = 0; i < child_count; i++) {
-        if (children[i].is_running && children[i].pid > 0) {
-            if (kill(children[i].pid, SIGTERM) == -1 && errno != ESRCH) {
+    for (int i = 0; i < child_count; i++)
+    {
+        if (children[i].is_running && children[i].pid > 0)
+        {
+            if (kill(children[i].pid, SIGTERM) == -1 && errno != ESRCH)
+            {
                 perror("send SIGTERM");
             }
         }
@@ -222,35 +265,45 @@ void shutdown_all_children(int timeout_seconds)
 
     struct timespec deadline;
     int have_deadline = clock_gettime(CLOCK_MONOTONIC, &deadline) == 0;
-    if (have_deadline) {
+    if (have_deadline)
+    {
         deadline.tv_sec += timeout_seconds;
-    } else {
+    }
+    else
+    {
         perror("clock_gettime");
     }
 
-    while (have_deadline) {
+    while (have_deadline)
+    {
         int still_running = 0;
 
-        for (int i = 0; i < child_count; i++) {
-            if (children[i].is_running) {
-                if (reap_on_shutdown(&children[i], WNOHANG) != 1) {
+        for (int i = 0; i < child_count; i++)
+        {
+            if (children[i].is_running)
+            {
+                if (reap_on_shutdown(&children[i], WNOHANG) != 1)
+                {
                     still_running = 1;
                 }
             }
         }
 
-        if (!still_running) {
+        if (!still_running)
+        {
             return;
         }
 
         struct timespec now;
-        if (clock_gettime(CLOCK_MONOTONIC, &now) == -1) {
+        if (clock_gettime(CLOCK_MONOTONIC, &now) == -1)
+        {
             perror("clock_gettime");
             break;
         }
 
         if (now.tv_sec > deadline.tv_sec ||
-            (now.tv_sec == deadline.tv_sec && now.tv_nsec >= deadline.tv_nsec)) {
+            (now.tv_sec == deadline.tv_sec && now.tv_nsec >= deadline.tv_nsec))
+        {
             break;
         }
 
@@ -258,12 +311,15 @@ void shutdown_all_children(int timeout_seconds)
         nanosleep(&pause_time, NULL);
     }
 
-    for (int i = 0; i < child_count; i++) {
-        if (!children[i].is_running || children[i].pid <= 0) {
+    for (int i = 0; i < child_count; i++)
+    {
+        if (!children[i].is_running || children[i].pid <= 0)
+        {
             continue;
         }
 
-        if (kill(children[i].pid, SIGKILL) == -1 && errno != ESRCH) {
+        if (kill(children[i].pid, SIGKILL) == -1 && errno != ESRCH)
+        {
             perror("send SIGKILL");
             continue;
         }

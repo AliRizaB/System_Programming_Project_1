@@ -101,6 +101,11 @@ Results go to `tests/test_results.txt` and the logs of each run to `tests/logs/`
     └── TEST_SCENARIOS.md
 ```
 
+## GitHub Repository
+
+- **Repository URL:** [Project](https://github.com/AliRizaB/System_Programming_Project_1.git)
+- **Branch:** `main` (Public)
+
 ## Team
 
 | Student | GitHub | Module |
@@ -108,3 +113,25 @@ Results go to `tests/test_results.txt` and the logs of each run to `tests/logs/`
 | Student 1 - Ali Rıza | AliRizaB | Signal management and main program (`signal_manager.*`, `main.c`) |
 | Student 2 - Beyzanur | byznrblzr | Child process management (`process_manager.*`, `worker.c`) |
 | Student 3 - İsmail Dal | ismaildal8240-sys | Logging and tests (`logger.*`, `Makefile`, `test_scenarios.sh`, `README.md`) |
+
+## Commit History
+
+| Commit | Author | Date | Description |
+| :--- | :--- | :--- | :--- |
+| `4189471` | AliRizaB | 2026-11-24 | Initial file creation |
+| `ffa756b` | AliRizaB | 2026-11-24 | started signal_management - Student 1 |
+| `a19206b` | AliRizaB | 2026-11-24 | signal manager is done also main.c is done. |
+| `caa51d9` | byznrblzr | 2026-11-25 | Define child process structure and process manager interface |
+| `e5280d0` | byznrblzr | 2026-11-25 | Add task and service modes to worker |
+| `56cfc20` | byznrblzr | 2026-11-25 | Supervise child processes with periodic checks, bounded restarts and graceful shutdown |
+| `47596f7` | İsmail | 2026-11-26 | Implement logger with timestamped log file and SIGUSR1 status report |
+| `4d6c345` | İsmail | 2026-11-26 | Add Makefile for watchdog and worker |
+| `3708636` | İsmail | 2026-11-26 | Add test script for section 7 scenarios |
+| `37aa7dd` | İsmail | 2026-11-26 | Add README, test documentation, sample log and results |
+| `9274d4d` | Beyza Nur Bulazar | 2026-11-27 | Merge Student 2 child process management module (#4) |
+| `e02dcdf` | İsmail DAL | 2026-11-27 | Merge pull request #5 from AliRizaB/student3-logging-tests |
+| `63504c7` | byznrblzr | 2026-11-27 | Log worker exits, restart attempts and restart limits |
+| `998ba80` | byznrblzr | 2026-11-27 | Align indentation in worker logging code |
+| `5e1edbc` | Beyza Nur Bulazar | 2026-11-27 | Merge pull request #6 from AliRizaB/student2-worker-logging |
+| `d5745d0` | AliRizaB | 2026-11-27 | Added console confirmation on SIGUSR1 and signaling that the child is re-started |
+| `HEAD`      | AliRizaB | 2026-11-27 | Commit history has been added to README.md |

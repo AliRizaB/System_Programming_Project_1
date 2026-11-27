@@ -88,7 +88,7 @@ static int start_child(ChildProcess *child, const char *mode)
 
         printf("[%s] started (PID: %ld)\n", mode, (long)pid);
         snprintf(buf, sizeof(buf), "Child [%s] is created (PID: %ld)", mode, (long)pid);
-        log_event("CHILD CREATED", buf);
+        log_event("CHILD_CREATED", buf);
     }
     else
     {

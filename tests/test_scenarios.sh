@@ -25,9 +25,11 @@ check() {
     if "$@"; then
         echo "  [PASS] $desc"
         PASS=$((PASS + 1))
+        return 0
     else
         echo "  [FAIL] $desc"
         FAIL=$((FAIL + 1))
+        return 1
     fi
 }
 
@@ -45,13 +47,56 @@ get_child() {
 
 # checks that the pid really belongs to a child of our watchdog
 is_our_child() {
-    [ -n "$1" ] && [ "$(ps -o ppid= -p "$1" 2>/dev/null | tr -d ' ')" = "$WD" ]
+    local pid="$1"
+    if ! [[ "$pid" =~ ^[0-9]+$ ]] || [ "$pid" -le 1 ]; then
+        return 1
+    fi
+    is_alive "$pid" || return 1
+
+    local info ppid comm
+    info=$(ps -o ppid=,comm= -p "$pid" 2>/dev/null) || return 1
+    read -r ppid comm <<< "$info"
+    [ "$ppid" = "$WD" ] && [ "$comm" = "worker" ]
+}
+
+# safely send a signal ONLY to a verified worker belonging to our $WD
+safe_kill_worker() {
+    local sig="$1"
+    local pid="$2"
+    if is_our_child "$pid"; then
+        kill "-$sig" "$pid" 2>/dev/null
+        return $?
+    fi
+    return 1
+}
+
+# safely send a signal ONLY to our active watchdog instance ($WD)
+safe_kill_watchdog() {
+    local sig="$1"
+    local target="$WD"
+    [ "$sig" = "INT" ] && target="-$WD" # process group for Ctrl+C
+
+    if [[ "$WD" =~ ^[0-9]+$ ]] && [ "$WD" -gt 1 ]; then
+        local info ppid comm
+        info=$(ps -o ppid=,comm= -p "$WD" 2>/dev/null) || return 1
+        read -r ppid comm <<< "$info"
+        if [ "$ppid" = "$$" ] && [ "$comm" = "watchdog" ]; then
+            kill "-$sig" -- "$target" 2>/dev/null
+            return $?
+        fi
+    fi
+    return 1
 }
 
 # start watchdog in its own process group so we can send SIGINT
 # to the whole group like Ctrl+C does in a terminal.
 # stdbuf -oL: line buffered stdout, otherwise printf output stays in the buffer
 start_watchdog() {
+    # Ensure any previous watchdog instance is completely gone before wiping the log
+    if [ -n "$WD" ] && is_alive "$WD"; then
+        safe_kill_watchdog KILL
+        wait "$WD" 2>/dev/null
+    fi
     rm -f "$LOG"
     setsid stdbuf -oL ./watchdog > "$1" 2>&1 &
     WD=$!
@@ -72,17 +117,18 @@ wait_exit() {
 
 # Safe cleanup
 cleanup() {
-    # Safe stop for watchdog
-    if [ -n "$WD" ] && [ "$WD" -gt 1 ] 2>/dev/null; then
-        if is_our_child "$WD"; then
-            kill -KILL "$WD" 2>/dev/null
+    if [[ "$WD" =~ ^[0-9]+$ ]] && [ "$WD" -gt 1 ]; then
+        local info ppid comm
+        info=$(ps -o ppid=,comm= -p "$WD" 2>/dev/null)
+        read -r ppid comm <<< "$info"
+        if [ "$ppid" = "$$" ] && [ "$comm" = "watchdog" ]; then
+            # Kill workers first while their PPID is still $WD
+            pkill -KILL -u "$(id -u)" -P "$WD" -x worker 2>/dev/null
+            kill -KILL -- "-$WD" 2>/dev/null || kill -KILL "$WD" 2>/dev/null
         fi
     fi
-
-    # Safely stop only OUR worker processes
-    pkill -KILL -u "$(id -u)" -P "$$" -x worker 2>/dev/null
 }
-trap cleanup EXIT
+trap cleanup EXIT INT TERM
 
 echo "Watchdog test scenarios - $(date '+%Y-%m-%d %H:%M:%S')"
 
@@ -116,7 +162,7 @@ check "STARTUP written to log" grep -q "\[STARTUP\]" "$LOG"
 # ------------------------------------------------------------------
 echo
 echo "== 3. Status report (SIGUSR1) =="
-kill -USR1 "$WD"
+safe_kill_watchdog USR1
 sleep 1
 grep "\[STATUS\]" "$LOG" | sed 's/^/    /'
 check "status report written to log" grep -q "\[STATUS\] Status report" "$LOG"
@@ -135,12 +181,11 @@ check "task was NOT restarted" [ -z "$(get_child task)" ]
 echo
 echo "== 5. Unexpected termination (kill -9 to service) =="
 # Verify the child
-if is_our_child "$SVC"; then
-    check "PID $SVC verified before sending the signal"
-    kill -KILL "$SVC"
+if check "PID $SVC verified before sending SIGKILL" is_our_child "$SVC"; then
+    safe_kill_worker KILL "$SVC"
     sleep 2
 else
-    echo "Refusing to kill PID $SVC: not our child process" >&2
+    echo "  [WARN] Refusing to kill PID '$SVC': not a verified worker of watchdog $WD" >&2
 fi
 NEW_SVC=$(get_child service)
 echo "  old PID: $SVC, new PID: $NEW_SVC"
@@ -153,22 +198,23 @@ echo
 echo "== 6. Restart limit (max 3) =="
 for n in 2 3 4; do
     P=$(get_child service)
-    if is_our_child "$P"; then
-        kill -KILL "$P"
+    if safe_kill_worker KILL "$P"; then
         echo "  kill $n -> PID $P"
+    else
+        echo "  [WARN] skipped kill $n: PID '$P' failed verification" >&2
     fi
     sleep 2
 done
 check "limit reached message" grep -q "Restart limit reached for worker service" "$LOG_DIR/run1_output.txt" "$LOG"
-check "exactly 3 restarts done" [ "$(cat "$LOG_DIR/run1_output.txt" "$LOG" | grep -c "Restarting worker service")" -eq 3 ]
+check "exactly 3 restarts done" [ "$(grep -c "Restarting worker service" "$LOG")" -eq 3 ]
 check "no more service process running" [ -z "$(get_child service)" ]
 check "watchdog still running" is_alive "$WD"
 
-kill -USR1 "$WD"
+safe_kill_watchdog USR1
 sleep 1
 check "report shows service as NOT RUNNING with 3 restarts" grep -q "Child 0 -> PID: -, state: NOT RUNNING, restarts: 3" "$LOG"
 
-kill -TERM "$WD"
+safe_kill_watchdog TERM
 wait_exit 10
 cp "$LOG" "$LOG_DIR/run1_watchdog.log"
 
@@ -178,7 +224,7 @@ echo "== 7. Graceful shutdown (SIGTERM) =="
 start_watchdog "$LOG_DIR/run2_output.txt"
 CHILDREN=$(pgrep -P "$WD" | tr '\n' ' ')
 echo "  watchdog PID: $WD, children: $CHILDREN"
-kill -TERM "$WD"
+safe_kill_watchdog TERM
 check "watchdog exited" wait_exit 10
 check "SHUTDOWN with SIGTERM in log" grep -q "\[SHUTDOWN\] SIGTERM" "$LOG"
 LEFT=0
@@ -194,7 +240,7 @@ start_watchdog "$LOG_DIR/run3_output.txt"
 CHILDREN=$(pgrep -P "$WD" | tr '\n' ' ')
 echo "  watchdog PID: $WD, children: $CHILDREN"
 # negative pid = send to the whole process group, same as Ctrl+C
-kill -INT -- "-$WD"
+safe_kill_watchdog INT
 check "watchdog exited" wait_exit 10
 check "SHUTDOWN with SIGINT in log" grep -q "\[SHUTDOWN\] SIGINT" "$LOG"
 LEFT=0

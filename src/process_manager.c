@@ -83,7 +83,7 @@ static int start_child(ChildProcess *child, const char *mode)
     // Log child event;
     char buf[128];
     snprintf(buf, sizeof(buf), "Child [%s] is created (PID: %ld)", mode, (long)pid);
-    log_event("CHILD CREATED", buf);
+    log_event("CHILD_CREATED", buf);
 
     // Show that the child is restarted
     if (child->restart_count == 0)
@@ -94,9 +94,9 @@ static int start_child(ChildProcess *child, const char *mode)
     {
         printf("[%s] re-started (PID: %ld, attempt %d/%d)\n",
                mode, (long)pid, child->restart_count, MAX_RESTARTS);
-        snprintf(buf, sizeof(buf), "Child [%s] re-started (PID: %ld, attempt %d/%d)\n",
+        snprintf(buf, sizeof(buf), "Child [%s] re-started (PID: %ld, attempt %d/%d)",
                  mode, (long)pid, child->restart_count, MAX_RESTARTS);
-        log_event("CHILD TERMINATE REQUEST", buf);
+        log_event("CHILD_RESTARTED", buf);
     }
     return 0;
 }

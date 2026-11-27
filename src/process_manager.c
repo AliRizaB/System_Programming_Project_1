@@ -74,6 +74,15 @@ static int start_child(ChildProcess *child, const char *mode)
 
     child->pid = pid;
     child->is_running = 1;
+    
+    // Show that the child is restarted
+    if (child->restart_count == 0) {
+        printf("[%s] started (PID: %ld)\n", mode, (long)pid);
+    } else {
+        printf("[%s] re-started (PID: %ld, attempt %d/%d)\n",
+               mode, (long)pid, child->restart_count, MAX_RESTARTS);
+    }
+    return 0;
     return 0;
 }
 

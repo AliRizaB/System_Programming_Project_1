@@ -45,6 +45,7 @@ int main(void) {
             int child_count = 0;
             const ChildProcess *children = get_child_processes(&child_count);
             log_status_report(children, child_count);
+            printf("[INFO] SIGUSR1 received: status report written to %s.\n", LOG_FILE_PATH);
         }
         
         // Terminate children

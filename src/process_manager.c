@@ -80,15 +80,15 @@ static int start_child(ChildProcess *child, const char *mode)
     child->pid = pid;
     child->is_running = 1;
 
-    // Log child event;
     char buf[128];
-    snprintf(buf, sizeof(buf), "Child [%s] is created (PID: %ld)", mode, (long)pid);
-    log_event("CHILD_CREATED", buf);
 
-    // Show that the child is restarted
+    // Log child event;
     if (child->restart_count == 0)
     {
+
         printf("[%s] started (PID: %ld)\n", mode, (long)pid);
+        snprintf(buf, sizeof(buf), "Child [%s] is created (PID: %ld)", mode, (long)pid);
+        log_event("CHILD_CREATED", buf);
     }
     else
     {

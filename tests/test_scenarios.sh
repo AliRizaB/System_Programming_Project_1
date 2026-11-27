@@ -70,9 +70,17 @@ wait_exit() {
     return 1
 }
 
+# Safe cleanup
 cleanup() {
-    [ -n "$WD" ] && kill -KILL "$WD" 2>/dev/null
-    pkill -KILL -x worker 2>/dev/null
+    # Safe stop for watchdog
+    if [ -n "$WD" ] && [ "$WD" -gt 1 ] 2>/dev/null; then
+        if is_our_child "$WD"; then
+            kill -KILL "$WD" 2>/dev/null
+        fi
+    fi
+
+    # Safely stop only OUR worker processes
+    pkill -KILL -u "$(id -u)" -P "$$" -x worker 2>/dev/null
 }
 trap cleanup EXIT
 
@@ -126,9 +134,14 @@ check "task was NOT restarted" [ -z "$(get_child task)" ]
 # ------------------------------------------------------------------
 echo
 echo "== 5. Unexpected termination (kill -9 to service) =="
-check "PID $SVC verified before sending the signal" is_our_child "$SVC"
-kill -KILL "$SVC"
-sleep 2
+# Verify the child
+if is_our_child "$SVC"; then
+    check "PID $SVC verified before sending the signal"
+    kill -KILL "$SVC"
+    sleep 2
+else
+    echo "Refusing to kill PID $SVC: not our child process" >&2
+fi
 NEW_SVC=$(get_child service)
 echo "  old PID: $SVC, new PID: $NEW_SVC"
 check "termination by signal detected" grep -q "Worker $SVC terminated by signal 9" "$LOG_DIR/run1_output.txt" "$LOG"

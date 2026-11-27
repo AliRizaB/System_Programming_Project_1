@@ -198,7 +198,7 @@ void handle_terminated_children(void)
 
                     snprintf(msg, sizeof msg, "Restarting worker %s (attempt %d of %d)",
                              modes[i], children[i].restart_count, MAX_RESTARTS);
-                    log_event("RESTART", msg);
+                    log_event("CHILD_RESTART", msg);
 
                     if (start_child(&children[i], modes[i]) != 0)
                     {
